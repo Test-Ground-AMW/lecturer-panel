@@ -1,5 +1,6 @@
 package lk.ijse.dep11.lecpanel.api;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -7,12 +8,13 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin
 public class FullTimeLecturerHttpController {
 
-    @PatchMapping("/ranks")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PatchMapping(path = "/ranks", consumes = "application/json")
     public void arrangeFullTimeLecturerOrder(){
         System.out.println("arrangeFullTimeLecturerOrder()");
     }
 
-    @GetMapping
+    @GetMapping(produces = "application/json")
     public void getAllFullTimeLecturers(){
         System.out.println("getAllFullTimeLecturers()");
     }
