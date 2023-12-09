@@ -8,6 +8,7 @@ import lk.ijse.dep11.lecpanel.to.response.LecturerResTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.DataSource;
 import javax.validation.Valid;
@@ -90,8 +91,48 @@ public class LecturerHttpController {
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{lecturer-id}")
-    public void deleteLecturer(){
-        System.out.println("deleteLecturer()");
+    public void deleteLecturer(@PathVariable("lecturer-id") int lecturerId){
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stmExist = connection.prepareStatement("SELECT * FROM lecturer WHERE id = ?");
+            stmExist.setInt(1,lecturerId);
+            if (!stmExist.executeQuery().next()) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+            connection.setAutoCommit(false);
+            try {
+                PreparedStatement stmIdentify = connection.prepareStatement("SELECT l.id, l.name, l.picture, ftr.`rank` AS ftr, vr.`rank` AS vr FROM " +
+                        "lecturer l LEFT OUTER JOIN full_time_rank ftr ON l.id = ftr.lecturer_id LEFT OUTER JOIN visiting_rank vr on " +
+                        "l.id = vr.lecturer_id WHERE l.id = ?");
+                stmIdentify.setInt(1,lecturerId);
+                ResultSet rst = stmIdentify.executeQuery();
+                rst.next();
+                String picture = rst.getString("picture");
+                int ftr = rst.getInt("ftr");
+                int vr = rst.getInt("vr");
+                String tableName = ftr > 0 ? "full_time_rank" : "visiting_rank";
+                int rank = ftr > 0 ? ftr : vr;
+
+                Statement stmDelRank = connection.createStatement();
+                stmDelRank.executeUpdate("DELETE FROM " + tableName + " WHERE `rank` = " + rank);
+
+                Statement stmShift = connection.createStatement();
+                stmShift.executeUpdate("UPDATE "+ tableName + " SET `rank` = `rank` - 1 WHERE `rank` > " + rank);
+
+                PreparedStatement stmDelLec = connection.prepareStatement("DELETE FROM lecturer WHERE id = ?");
+                stmDelLec.setInt(1,lecturerId);
+                stmDelLec.executeUpdate();
+
+                if (picture != null) bucket.get(picture).delete();
+
+                connection.commit();
+            } catch (Throwable t) {
+                connection.rollback();
+                throw t;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @ResponseStatus(HttpStatus.ACCEPTED)
