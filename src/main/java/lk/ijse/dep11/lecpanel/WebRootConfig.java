@@ -1,5 +1,10 @@
 package lk.ijse.dep11.lecpanel;
 
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.Bucket;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.cloud.StorageClient;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;
@@ -8,10 +13,15 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 @PropertySource("classpath:/application.properties")
 @Configuration
 public class WebRootConfig {
-    @Bean
+
+        @Bean
     public HikariDataSource dataSource(Environment env){
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(env.getRequiredProperty("spring.datasource.url"));
